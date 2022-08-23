@@ -8,6 +8,9 @@ import com.alex.senior.pomidor.testihor.data.internet.UserService
 import com.alex.senior.pomidor.testihor.data.internet.models.ResponseModel
 import com.alex.senior.pomidor.testihor.room.EntityUser
 import com.alex.senior.pomidor.testihor.room.UsersDatabase
+import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
+import okhttp3.Dispatcher
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -17,15 +20,18 @@ object RepositoryUsers {
     private val usersService = RetrofitClient.retrofit.create(UserService::class.java)
     lateinit var database: UsersDatabase
 
-    fun initDatabase (context: Context) {
-        database= UsersDatabase.getDatabase(context)
+    fun initDatabase(context: Context) {
+        database = UsersDatabase.getDatabase(context)
     }
 
     fun downloadNewUsers() {
         usersService.getUsers().enqueue(object : Callback<ResponseModel> {
             override fun onResponse(call: Call<ResponseModel>, response: Response<ResponseModel>) {
                 val listUsers = response.body()?.results?.map { it.toUser() }!!
-                database.usersDao().addUsers(listUsers)
+                GlobalScope.launch(Dispatchers.IO) {
+                    database.usersDao().addUsers(listUsers)
+                }
+
             }
 
             override fun onFailure(call: Call<ResponseModel>, t: Throwable) {
@@ -34,7 +40,7 @@ object RepositoryUsers {
         })
     }
 
-    fun getAllUsersR(): LiveData <List<EntityUser>> {
+    fun getAllUsersR(): LiveData<List<EntityUser>> {
         return database.usersDao().getAll()
     }
 }
